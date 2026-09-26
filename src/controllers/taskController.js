@@ -16,6 +16,9 @@ const createTask = async (req, res, next) => {
       status,
       priority,
       dueDate,
+      //logged-in user's id
+      user: req.user.userId,
+
     });
 
     res.status(201).json({
@@ -30,10 +33,122 @@ const createTask = async (req, res, next) => {
 
 const getAllTasks = async (req, res, next) => {
   try {
-    const tasks = await Task.find();
+    const { status,
+      priority,
+      search,
+      page = 1,
+      limit = 5,
+      sort = "createAt",
+      sortOrder = "desc",
+
+    } = req.query;
+
+    const allowedStatuses = [
+      "pending",
+      "in-progress",
+      "completed",
+    ];
+
+    const allowedPriorities = [
+      "low",
+      "medium",
+      "high",
+    ];
+
+    // Validate status
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid status. Use pending, in-progress, or completed",
+      });
+    }
+
+    // Validate priority
+    if (priority && !allowedPriorities.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid priority. Use low, medium, or high",
+      });
+    }
+    //pagination
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    if (pageNumber < 1 || limitNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "page and limit must be grater than 0",
+
+      });
+    }
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // sort 
+    const allowedsortfields = [
+      "createdAt",
+      "updateAt",
+      "dueDate",
+      "title",
+
+    ];
+    if (!allowedsortfields.includes(sort)) {
+      return res.status(400).json({
+        success: false,
+        message: "invalid sort field . use createdAt, updatedAt ,dueDate, or title",
+
+      });
+
+    }
+    if (!["asc", "desc"].includes(sortOrder)) {
+      return res.status(400).json({
+        success: false,
+        message: "invalid sort order . use asc or desc ",
+
+      });
+
+    }
+
+
+    // Build MongoDB filter
+    const filter = {
+      user:req.user.userId,
+
+    };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (priority) {
+      filter.priority = priority;
+    }
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+
+      ];
+    }
+    // total matching tasks
+    const totalTasks = await Task.countDocuments(filter);
+    // get paginated tasks
+
+
+    const sortValue = sortOrder === "asc" ? 1 : -1;
+
+    const tasks = await Task.find(filter)
+      .sort({ [sort]: sortValue })
+      .skip(skip)
+      .limit(limitNumber);
+
 
     res.status(200).json({
       success: true,
+      page: pageNumber,
+      limit: limitNumber,
+      totalTasks,
+
       count: tasks.length,
       tasks,
     });
@@ -46,7 +161,12 @@ const getTaskById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const task = await Task.findById(id);
+    const task = await Task.findOne({
+      _id:id,
+      user:req.user.userId,
+
+    });
+
 
     if (!task) {
       return res.status(404).json({
@@ -68,16 +188,41 @@ const updateTask = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const updatedTask = await Task.findByIdAndUpdate(
-      id,
-      req.body,
+    const updateData = {};
+
+    if (req.body.title !== undefined) {
+      updateData.title = req.body.title;
+    }
+
+    if (req.body.description !== undefined) {
+      updateData.description = req.body.description;
+    }
+
+    if (req.body.status !== undefined) {
+      updateData.status = req.body.status;
+    }
+
+    if (req.body.priority !== undefined) {
+      updateData.priority = req.body.priority;
+    }
+
+    if (req.body.dueDate !== undefined) {
+      updateData.dueDate = req.body.dueDate;
+    }
+
+    const task = await Task.findOneAndUpdate(
+      {
+        _id: id,
+        user: req.user.userId,
+      },
+      updateData,
       {
         new: true,
         runValidators: true,
       }
     );
 
-    if (!updatedTask) {
+    if (!task) {
       return res.status(404).json({
         success: false,
         message: "Task not found",
@@ -87,7 +232,7 @@ const updateTask = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Task updated successfully",
-      task: updatedTask,
+      task,
     });
   } catch (error) {
     next(error);
@@ -98,7 +243,11 @@ const deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const deletedTask = await Task.findByIdAndDelete(id);
+    const deletedTask = await Task.findByIdAndDelete({
+      _id:id,
+      user:req.user.userId,
+      
+    });
 
     if (!deletedTask) {
       return res.status(404).json({

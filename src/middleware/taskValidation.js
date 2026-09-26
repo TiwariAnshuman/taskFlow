@@ -1,6 +1,6 @@
 import { body, validationResult } from "express-validator";
 
-export const validateTask = [
+const validateTask = [
   body("title")
     .trim()
     .notEmpty()
@@ -17,16 +17,12 @@ export const validateTask = [
   body("status")
     .optional()
     .isIn(["pending", "in-progress", "completed"])
-    .withMessage(
-      "Status must be pending, in-progress, or completed"
-    ),
+    .withMessage("Status must be pending, in-progress, or completed"),
 
   body("priority")
     .optional()
     .isIn(["low", "medium", "high"])
-    .withMessage(
-      "Priority must be low, medium, or high"
-    ),
+    .withMessage("Priority must be low, medium, or high"),
 
   body("dueDate")
     .optional()
@@ -46,3 +42,6 @@ export const validateTask = [
     next();
   },
 ];
+
+export { validateTask };
+export default { validateTask };
