@@ -1,0 +1,19 @@
+$kind: http-request
+name: http://localhost:5000/api/auth/register
+description: ""
+url: http://localhost:5000/api/auth/register
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"name\": \"A\",\r
+
+    \  \"email\": \"anshuman\",\r
+
+    \  \"password\": \"123456\"\r
+
+    }"
+auth:
+  type: noauth
+order: 1790494602592

@@ -1,4 +1,5 @@
 import Task from "../models/Task.js";
+import { sendSuccess, sendError } from "../utils/response.js";
 
 const createTask = async (req, res, next) => {
   try {
@@ -16,16 +17,16 @@ const createTask = async (req, res, next) => {
       status,
       priority,
       dueDate,
-      //logged-in user's id
+      // logged-in user's id
       user: req.user.userId,
-
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Task created successfully",
-      task,
-    });
+    return sendSuccess(
+      res,
+      201,
+      "Task created successfully",
+      task
+    );
   } catch (error) {
     next(error);
   }
@@ -33,14 +34,14 @@ const createTask = async (req, res, next) => {
 
 const getAllTasks = async (req, res, next) => {
   try {
-    const { status,
+    const {
+      status,
       priority,
       search,
       page = 1,
       limit = 5,
-      sort = "createAt",
+      sort = "createdAt",
       sortOrder = "desc",
-
     } = req.query;
 
     const allowedStatuses = [
@@ -57,63 +58,63 @@ const getAllTasks = async (req, res, next) => {
 
     // Validate status
     if (status && !allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid status. Use pending, in-progress, or completed",
-      });
+      return sendError(
+        res,
+        400,
+        "Invalid status. Use pending, in-progress, or completed"
+      );
     }
 
     // Validate priority
     if (priority && !allowedPriorities.includes(priority)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid priority. Use low, medium, or high",
-      });
+      return sendError(
+        res,
+        400,
+        "Invalid priority. Use low, medium, or high"
+      );
     }
-    //pagination
+
+    // Pagination
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
-    if (pageNumber < 1 || limitNumber < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "page and limit must be grater than 0",
 
-      });
+    if (pageNumber < 1 || limitNumber < 1) {
+      return sendError(
+        res,
+        400,
+        "Page and limit must be greater than 0"
+      );
     }
+
     const skip = (pageNumber - 1) * limitNumber;
 
-    // sort 
-    const allowedsortfields = [
+    // Sort
+    const allowedSortFields = [
       "createdAt",
-      "updateAt",
+      "updatedAt",
       "dueDate",
       "title",
-
     ];
-    if (!allowedsortfields.includes(sort)) {
-      return res.status(400).json({
-        success: false,
-        message: "invalid sort field . use createdAt, updatedAt ,dueDate, or title",
 
-      });
-
+    if (!allowedSortFields.includes(sort)) {
+      return sendError(
+        res,
+        400,
+        "Invalid sort field. Use createdAt, updatedAt, dueDate, or title"
+      );
     }
+
     if (!["asc", "desc"].includes(sortOrder)) {
-      return res.status(400).json({
-        success: false,
-        message: "invalid sort order . use asc or desc ",
-
-      });
-
+      return sendError(
+        res,
+        400,
+        "Invalid sort order. Use asc or desc"
+      );
     }
-
 
     // Build MongoDB filter
     const filter = {
-      user:req.user.userId,
-
+      user: req.user.userId,
     };
 
     if (status) {
@@ -123,35 +124,48 @@ const getAllTasks = async (req, res, next) => {
     if (priority) {
       filter.priority = priority;
     }
+
     if (search) {
       filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-
+        {
+          title: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+        {
+          description: {
+            $regex: search,
+            $options: "i",
+          },
+        },
       ];
     }
-    // total matching tasks
+
+    // Total matching tasks
     const totalTasks = await Task.countDocuments(filter);
-    // get paginated tasks
 
-
+    // Sort
     const sortValue = sortOrder === "asc" ? 1 : -1;
 
+    // Get paginated tasks
     const tasks = await Task.find(filter)
       .sort({ [sort]: sortValue })
       .skip(skip)
       .limit(limitNumber);
 
-
-    res.status(200).json({
-      success: true,
-      page: pageNumber,
-      limit: limitNumber,
-      totalTasks,
-
-      count: tasks.length,
-      tasks,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Tasks fetched successfully",
+      {
+        page: pageNumber,
+        limit: limitNumber,
+        totalTasks,
+        count: tasks.length,
+        tasks,
+      }
+    );
   } catch (error) {
     next(error);
   }
@@ -162,23 +176,24 @@ const getTaskById = async (req, res, next) => {
     const { id } = req.params;
 
     const task = await Task.findOne({
-      _id:id,
-      user:req.user.userId,
-
+      _id: id,
+      user: req.user.userId,
     });
-
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
+      return sendError(
+        res,
+        404,
+        "Task not found"
+      );
     }
 
-    res.status(200).json({
-      success: true,
-      task,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Task fetched successfully",
+      task
+    );
   } catch (error) {
     next(error);
   }
@@ -223,17 +238,19 @@ const updateTask = async (req, res, next) => {
     );
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
+      return sendError(
+        res,
+        404,
+        "Task not found"
+      );
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Task updated successfully",
-      task,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Task updated successfully",
+      task
+    );
   } catch (error) {
     next(error);
   }
@@ -243,24 +260,25 @@ const deleteTask = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const deletedTask = await Task.findByIdAndDelete({
-      _id:id,
-      user:req.user.userId,
-      
+    const deletedTask = await Task.findOneAndDelete({
+      _id: id,
+      user: req.user.userId,
     });
 
     if (!deletedTask) {
-      return res.status(404).json({
-        success: false,
-        message: "Task not found",
-      });
+      return sendError(
+        res,
+        404,
+        "Task not found"
+      );
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Task deleted successfully",
-      task: deletedTask,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Task deleted successfully",
+      deletedTask
+    );
   } catch (error) {
     next(error);
   }
