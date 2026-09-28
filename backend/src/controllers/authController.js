@@ -102,7 +102,7 @@ import bcrypt from "bcryptjs";
  const getCurrentUser =async(req,res,next )=>{
     try{
         const user= await User.findById(req.user.userId).select("-password");
-         if(!User){
+         if(!user){
             return res.status(404).json({
                 success:false,
                 message:"user not found",
