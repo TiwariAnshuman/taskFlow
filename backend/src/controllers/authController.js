@@ -97,10 +97,41 @@ import bcrypt from "bcryptjs";
         next(error);
 
     }
- }
+ };
+ // get current users 
+ const getCurrentUser =async(req,res,next )=>{
+    try{
+        const user= await User.findById(req.user.userId).select("-password");
+         if(!User){
+            return res.status(404).json({
+                success:false,
+                message:"user not found",
+                error:null,
+
+            });
+         }
+         res.status(200).json({
+            success:true,
+            message:"current user fetched succesfully",
+            data:{
+                 id :user._id,
+                 name:user.name,
+                 email:user.email,
+
+            },
+
+         });
+    }catch(error){
+        next(error);
+
+    }
+ };
+
   export default {
     registerUser,
     loginUser,
+     getCurrentUser,
+     
     
 
   };

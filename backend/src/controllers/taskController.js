@@ -9,6 +9,8 @@ const createTask = async (req, res, next) => {
       status,
       priority,
       dueDate,
+     
+
     } = req.body;
 
     const task = await Task.create({
@@ -20,6 +22,7 @@ const createTask = async (req, res, next) => {
       // logged-in user's id
       user: req.user.userId,
     });
+     await task.populate("user","name email");
 
     return sendSuccess(
       res,
@@ -37,11 +40,16 @@ const getAllTasks = async (req, res, next) => {
     const {
       status,
       priority,
+      dueDate,
+      overdue,
+
+
       search,
       page = 1,
       limit = 5,
       sort = "createdAt",
       sortOrder = "desc",
+  
     } = req.query;
 
     const allowedStatuses = [
@@ -57,13 +65,21 @@ const getAllTasks = async (req, res, next) => {
     ];
 
     // Validate status
-    if (status && !allowedStatuses.includes(status)) {
-      return sendError(
-        res,
-        400,
-        "Invalid status. Use pending, in-progress, or completed"
-      );
-    }
+   if(status){
+    const requestedStatuses= status.split(",");
+     const invalidStatus =requestedStatuses.some(
+      (item)=>!allowedStatuses.includes(item)
+     );
+      if(invalidStatus){
+        return sendError(
+          res,
+          400,
+          "invalid status. use pending, in-progress or completed ",
+
+        );
+      }
+
+   }
 
     // Validate priority
     if (priority && !allowedPriorities.includes(priority)) {
@@ -118,12 +134,37 @@ const getAllTasks = async (req, res, next) => {
     };
 
     if (status) {
-      filter.status = status;
+      const requestendStatuses = status.split(",");
+      filter.status={
+        $in:requestendStatuses,
+      };
     }
 
     if (priority) {
       filter.priority = priority;
     }
+     if (dueDate){
+      const startOfDay= new Date(dueDate);
+      startOfDay.setHours(0,0,0,0);
+       const endOfDay= new Date(dueDate);
+       endOfDay.setHours(23,59,59,999);
+        filter.dueDate= {
+          $gte:startOfDay,
+          $lte:endOfDay,
+
+        };
+     }
+      if(overdue === "true"){
+        filter.dueDate={
+          $lt: new Date(),
+
+        };
+        filter.status={
+          $ne:"completed",
+
+        };
+
+      }
 
     if (search) {
       filter.$or = [
@@ -150,6 +191,7 @@ const getAllTasks = async (req, res, next) => {
 
     // Get paginated tasks
     const tasks = await Task.find(filter)
+    .populate("user","name email")
       .sort({ [sort]: sortValue })
       .skip(skip)
       .limit(limitNumber);
@@ -178,7 +220,8 @@ const getTaskById = async (req, res, next) => {
     const task = await Task.findOne({
       _id: id,
       user: req.user.userId,
-    });
+    }).populate("user","name email");
+
 
     if (!task) {
       return sendError(
@@ -235,7 +278,8 @@ const updateTask = async (req, res, next) => {
         new: true,
         runValidators: true,
       }
-    );
+    ).populate("user","name email");
+
 
     if (!task) {
       return sendError(
