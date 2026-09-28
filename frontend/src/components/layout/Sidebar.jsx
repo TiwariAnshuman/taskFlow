@@ -5,7 +5,36 @@ import {
   Settings,
 } from "lucide-react";
 
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+
 function Sidebar() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const navItems = [
+    {
+      label: "Dashboard",
+      path: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      label: "Tasks",
+      path: "/tasks",
+      icon: CheckSquare,
+    },
+    {
+      label: "Settings",
+      path: "/settings",
+      icon: Settings,
+    },
+  ];
+
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-[#302D29] bg-[#191816]">
       
@@ -22,25 +51,34 @@ function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#211F1C] text-[#F59E0B] text-sm">
-          <LayoutDashboard size={18} />
-          Dashboard
-        </button>
+        {navItems.map((item) => {
+          const Icon = item.icon;
 
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4] text-sm transition-colors">
-          <CheckSquare size={18} />
-          Tasks
-        </button>
-
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4] text-sm transition-colors">
-          <Settings size={18} />
-          Settings
-        </button>
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  isActive
+                    ? "bg-[#211F1C] text-[#F59E0B]"
+                    : "text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4]"
+                }`
+              }
+            >
+              <Icon size={18} />
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Logout */}
       <div className="p-4 border-t border-[#302D29]">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4] text-sm transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4] text-sm transition-colors"
+        >
           <LogOut size={18} />
           Logout
         </button>

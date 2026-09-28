@@ -9,8 +9,6 @@ const createTask = async (req, res, next) => {
       status,
       priority,
       dueDate,
-     
-
     } = req.body;
 
     const task = await Task.create({
@@ -22,7 +20,8 @@ const createTask = async (req, res, next) => {
       // logged-in user's id
       user: req.user.userId,
     });
-     await task.populate("user","name email");
+
+    await task.populate("user", "name email");
 
     return sendSuccess(
       res,
@@ -41,15 +40,12 @@ const getAllTasks = async (req, res, next) => {
       status,
       priority,
       dueDate,
-      overdue,
-
-
+      dueDateFilter,
       search,
       page = 1,
       limit = 5,
       sort = "createdAt",
       sortOrder = "desc",
-  
     } = req.query;
 
     const allowedStatuses = [
@@ -64,25 +60,39 @@ const getAllTasks = async (req, res, next) => {
       "high",
     ];
 
+    const allowedDueDateFilters = [
+      "today",
+      "upcoming",
+      "overdue",
+      "no-date",
+    ];
+
+    // -----------------------------
     // Validate status
-   if(status){
-    const requestedStatuses= status.split(",");
-     const invalidStatus =requestedStatuses.some(
-      (item)=>!allowedStatuses.includes(item)
-     );
-      if(invalidStatus){
+    // -----------------------------
+    if (status) {
+      const requestedStatuses = status.split(",");
+
+      const invalidStatus = requestedStatuses.some(
+        (item) => !allowedStatuses.includes(item)
+      );
+
+      if (invalidStatus) {
         return sendError(
           res,
           400,
-          "invalid status. use pending, in-progress or completed ",
-
+          "Invalid status. Use pending, in-progress, or completed"
         );
       }
+    }
 
-   }
-
+    // -----------------------------
     // Validate priority
-    if (priority && !allowedPriorities.includes(priority)) {
+    // -----------------------------
+    if (
+      priority &&
+      !allowedPriorities.includes(priority)
+    ) {
       return sendError(
         res,
         400,
@@ -90,11 +100,32 @@ const getAllTasks = async (req, res, next) => {
       );
     }
 
+    // -----------------------------
+    // Validate due date filter
+    // -----------------------------
+    if (
+      dueDateFilter &&
+      !allowedDueDateFilters.includes(dueDateFilter)
+    ) {
+      return sendError(
+        res,
+        400,
+        "Invalid dueDateFilter. Use today, upcoming, overdue, or no-date"
+      );
+    }
+
+    // -----------------------------
     // Pagination
+    // -----------------------------
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
 
-    if (pageNumber < 1 || limitNumber < 1) {
+    if (
+      !Number.isInteger(pageNumber) ||
+      !Number.isInteger(limitNumber) ||
+      pageNumber < 1 ||
+      limitNumber < 1
+    ) {
       return sendError(
         res,
         400,
@@ -104,7 +135,9 @@ const getAllTasks = async (req, res, next) => {
 
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Sort
+    // -----------------------------
+    // Sort validation
+    // -----------------------------
     const allowedSortFields = [
       "createdAt",
       "updatedAt",
@@ -128,44 +161,100 @@ const getAllTasks = async (req, res, next) => {
       );
     }
 
+    // -----------------------------
     // Build MongoDB filter
+    // -----------------------------
     const filter = {
       user: req.user.userId,
     };
 
+    // Status filter
     if (status) {
-      const requestendStatuses = status.split(",");
-      filter.status={
-        $in:requestendStatuses,
+      const requestedStatuses = status.split(",");
+
+      filter.status = {
+        $in: requestedStatuses,
       };
     }
 
+    // Priority filter
     if (priority) {
       filter.priority = priority;
     }
-     if (dueDate){
-      const startOfDay= new Date(dueDate);
-      startOfDay.setHours(0,0,0,0);
-       const endOfDay= new Date(dueDate);
-       endOfDay.setHours(23,59,59,999);
-        filter.dueDate= {
-          $gte:startOfDay,
-          $lte:endOfDay,
 
-        };
-     }
-      if(overdue === "true"){
-        filter.dueDate={
-          $lt: new Date(),
+    // Exact due date filter
+    if (dueDate) {
+      const startOfDay = new Date(dueDate);
+      startOfDay.setHours(0, 0, 0, 0);
 
-        };
-        filter.status={
-          $ne:"completed",
+      const endOfDay = new Date(dueDate);
+      endOfDay.setHours(23, 59, 59, 999);
 
-        };
+      filter.dueDate = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
+    }
 
-      }
+    // -----------------------------
+    // Due date filters
+    // -----------------------------
+    const now = new Date();
 
+    // Today
+    if (dueDateFilter === "today") {
+      const startOfToday = new Date(now);
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const endOfToday = new Date(now);
+      endOfToday.setHours(23, 59, 59, 999);
+
+      filter.dueDate = {
+        $gte: startOfToday,
+        $lte: endOfToday,
+      };
+    }
+
+    // Upcoming
+    if (dueDateFilter === "upcoming") {
+      const startOfTomorrow = new Date(now);
+
+      startOfTomorrow.setDate(
+        startOfTomorrow.getDate() + 1
+      );
+
+      startOfTomorrow.setHours(0, 0, 0, 0);
+
+      filter.dueDate = {
+        $gte: startOfTomorrow,
+      };
+
+      // Completed tasks are not considered upcoming
+      filter.status = {
+        $ne: "completed",
+      };
+    }
+
+    // Overdue
+    if (dueDateFilter === "overdue") {
+      filter.dueDate = {
+        $lt: now,
+      };
+
+      // Completed tasks are not considered overdue
+      filter.status = {
+        $ne: "completed",
+      };
+    }
+
+    // No due date
+    if (dueDateFilter === "no-date") {
+      filter.dueDate = null;
+    }
+
+    // -----------------------------
+    // Search
+    // -----------------------------
     if (search) {
       filter.$or = [
         {
@@ -183,16 +272,25 @@ const getAllTasks = async (req, res, next) => {
       ];
     }
 
+    // -----------------------------
     // Total matching tasks
+    // -----------------------------
     const totalTasks = await Task.countDocuments(filter);
 
+    // -----------------------------
     // Sort
-    const sortValue = sortOrder === "asc" ? 1 : -1;
+    // -----------------------------
+    const sortValue =
+      sortOrder === "asc" ? 1 : -1;
 
+    // -----------------------------
     // Get paginated tasks
+    // -----------------------------
     const tasks = await Task.find(filter)
-    .populate("user","name email")
-      .sort({ [sort]: sortValue })
+      .populate("user", "name email")
+      .sort({
+        [sort]: sortValue,
+      })
       .skip(skip)
       .limit(limitNumber);
 
@@ -212,6 +310,65 @@ const getAllTasks = async (req, res, next) => {
     next(error);
   }
 };
+const getTaskStats = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+
+    const now = new Date();
+
+    const [
+      total,
+      completed,
+      pending,
+      inProgress,
+      overdue,
+    ] = await Promise.all([
+      Task.countDocuments({
+        user: userId,
+      }),
+
+      Task.countDocuments({
+        user: userId,
+        status: "completed",
+      }),
+
+      Task.countDocuments({
+        user: userId,
+        status: "pending",
+      }),
+
+      Task.countDocuments({
+        user: userId,
+        status: "in-progress",
+      }),
+
+      Task.countDocuments({
+        user: userId,
+        dueDate: {
+          $lt: now,
+        },
+        status: {
+          $ne: "completed",
+        },
+      }),
+    ]);
+
+    return sendSuccess(
+      res,
+      200,
+      "Task stats fetched successfully",
+      {
+        total,
+        completed,
+        pending,
+        inProgress,
+        overdue,
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 const getTaskById = async (req, res, next) => {
   try {
@@ -220,8 +377,7 @@ const getTaskById = async (req, res, next) => {
     const task = await Task.findOne({
       _id: id,
       user: req.user.userId,
-    }).populate("user","name email");
-
+    }).populate("user", "name email");
 
     if (!task) {
       return sendError(
@@ -278,8 +434,7 @@ const updateTask = async (req, res, next) => {
         new: true,
         runValidators: true,
       }
-    ).populate("user","name email");
-
+    ).populate("user", "name email");
 
     if (!task) {
       return sendError(
@@ -331,6 +486,7 @@ const deleteTask = async (req, res, next) => {
 export default {
   createTask,
   getAllTasks,
+  getTaskStats,
   getTaskById,
   updateTask,
   deleteTask,

@@ -16,6 +16,9 @@ router.post("/", validateTask, taskController.createTask);
 
 
 router.get("/", taskController.getAllTasks);
+router.get("/stats", taskController.getTaskStats);
+
+router.get("/:id", taskController.getTaskById);
 
 router.get("/:id", taskController.getTaskById);
 router.put("/:id" , taskController.updateTask);

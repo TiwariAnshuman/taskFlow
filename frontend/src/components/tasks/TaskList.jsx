@@ -3,16 +3,14 @@ import {
   Circle,
   Clock3,
   Pencil,
-  
   Trash2,
-
 } from "lucide-react";
 
-function TaskList({ tasks, 
-    onEditTask,
-    onDeleteTask,
-
-
+function TaskList({
+  tasks,
+  onEditTask,
+  onDeleteTask,
+  showActions = true,
 }) {
   if (!tasks || tasks.length === 0) {
     return (
@@ -88,23 +86,30 @@ function TaskList({ tasks,
             {task.priority}
           </span>
 
-          {/* Edit */}
-          <button
-            type="button"
-            onClick={() => onEditTask?.(task)}
-            className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-[#F59E0B]"
-            aria-label={`Edit ${task.title}`}
-          >
-            <Pencil size={17} />
-          </button>
-          <button
-  type="button"
-  onClick={() => onDeleteTask?.(task)}
-  className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-red-400"
-  aria-label={`Delete ${task.title}`}
->
-  <Trash2 size={17} />
-</button>
+          {/* Actions */}
+          {showActions && (
+            <>
+              {/* Edit */}
+              <button
+                type="button"
+                onClick={() => onEditTask?.(task)}
+                className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-[#F59E0B]"
+                aria-label={`Edit ${task.title}`}
+              >
+                <Pencil size={17} />
+              </button>
+
+              {/* Delete */}
+              <button
+                type="button"
+                onClick={() => onDeleteTask?.(task)}
+                className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-red-400"
+                aria-label={`Delete ${task.title}`}
+              >
+                <Trash2 size={17} />
+              </button>
+            </>
+          )}
         </div>
       ))}
     </div>

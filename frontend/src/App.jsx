@@ -4,6 +4,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import Tasks from "./pages/Tasks";
+import Settings from "./pages/Setting";
+
 
 function App() {
   return (
@@ -25,6 +28,8 @@ function App() {
             path="/dashboard"
             element={<Dashboard />}
           />
+           <Route path="/tasks" element={<Tasks />} />
+           <Route path="/settings" element={<Settings />} />
         </Route>
 
         <Route
