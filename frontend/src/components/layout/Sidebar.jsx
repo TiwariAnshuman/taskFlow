@@ -3,54 +3,60 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  X,
 } from "lucide-react";
 
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Avatar from "../ui/Avatar";
+import Logo from "../ui/Logo";
+import { IconButton, focusRing } from "../ui/Button";
 
-function Sidebar() {
+const navItems = [
+  {
+    label: "Dashboard",
+    path: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    label: "Tasks",
+    path: "/tasks",
+    icon: CheckSquare,
+  },
+  {
+    label: "Settings",
+    path: "/settings",
+    icon: Settings,
+  },
+];
+
+function SidebarBody({ onNavigate, onClose }) {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const navItems = [
-    {
-      label: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      label: "Tasks",
-      path: "/tasks",
-      icon: CheckSquare,
-    },
-    {
-      label: "Settings",
-      path: "/settings",
-      icon: Settings,
-    },
-  ];
-
   return (
-    <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-[#302D29] bg-[#191816]">
-      
+    <>
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-[#302D29]">
-        <div className="flex items-center gap-3">
-          <div className="w-1 h-6 bg-[#F59E0B]" />
+      <div className="flex h-14 shrink-0 items-center justify-between px-5">
+        <Logo />
 
-          <span className="text-lg font-semibold tracking-tight text-[#F5F5F4]">
-            TASKFLOW
-          </span>
-        </div>
+        {onClose && (
+          <IconButton
+            icon={X}
+            label="Close navigation"
+            onClick={onClose}
+            className="-mr-2"
+          />
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav aria-label="Main" className="flex-1 space-y-0.5 px-3 pt-2">
         {navItems.map((item) => {
           const Icon = item.icon;
 
@@ -58,32 +64,98 @@ function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                `group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors duration-150 ease-out ${focusRing} ${
                   isActive
-                    ? "bg-[#211F1C] text-[#F59E0B]"
-                    : "text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4]"
+                    ? "bg-[#7C3AED]/10 text-[#F5F7FA]"
+                    : "text-[#A1A7B3] hover:bg-[#16191F] hover:text-[#F5F7FA]"
                 }`
               }
             >
-              <Icon size={18} />
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  <Icon
+                    size={17}
+                    aria-hidden="true"
+                    className={`transition-colors duration-150 ${
+                      isActive
+                        ? "text-[#A78BFA]"
+                        : "text-[#6B7280] group-hover:text-[#A1A7B3]"
+                    }`}
+                  />
+                  {item.label}
+                </>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="p-4 border-t border-[#302D29]">
+      {/* User + Logout */}
+      <div className="shrink-0 border-t border-[#252A33] p-3">
+        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+          <Avatar name={user?.name} size="lg" />
+
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-[#F5F7FA]">
+              {user?.name || "Your account"}
+            </p>
+
+            <p className="truncate text-xs text-[#6B7280]">
+              {user?.email || ""}
+            </p>
+          </div>
+        </div>
+
         <button
+          type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#A8A29E] hover:bg-[#211F1C] hover:text-[#F5F5F4] text-sm transition-colors"
+          className={`mt-1 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm text-[#A1A7B3] transition-colors duration-150 ease-out hover:bg-[#16191F] hover:text-[#F5F7FA] ${focusRing}`}
         >
-          <LogOut size={18} />
+          <LogOut size={17} aria-hidden="true" className="text-[#6B7280]" />
           Logout
         </button>
       </div>
-    </aside>
+    </>
+  );
+}
+
+function Sidebar({ open = false, onClose }) {
+  return (
+    <>
+      {/* Desktop */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-[#252A33] bg-[#0B0D10] lg:flex">
+        <SidebarBody />
+      </aside>
+
+      {/* Mobile / tablet drawer */}
+      <div
+        className={`fixed inset-0 z-50 transition-[visibility] duration-200 lg:hidden ${
+          open ? "visible" : "invisible"
+        }`}
+      >
+        <div
+          onClick={onClose}
+          aria-hidden="true"
+          className={`absolute inset-0 bg-black/60 transition-opacity duration-200 ease-out ${
+            open ? "opacity-100" : "opacity-0"
+          }`}
+        />
+
+        <aside
+          id="mobile-navigation"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+          className={`absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-[#252A33] bg-[#0B0D10] shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-transform duration-200 ease-out ${
+            open ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <SidebarBody onNavigate={onClose} onClose={onClose} />
+        </aside>
+      </div>
+    </>
   );
 }
 

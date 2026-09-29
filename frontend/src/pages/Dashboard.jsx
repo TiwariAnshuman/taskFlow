@@ -1,22 +1,36 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
+  AlertCircle,
   ArrowRight,
   CheckCircle2,
-  Clock3,
+  CircleDot,
+  ListChecks,
   ListTodo,
   Plus,
-  AlertCircle,
 } from "lucide-react";
 
-import Sidebar from "../components/layout/Sidebar";
-import Topbar from "../components/layout/Topbar";
+import AppShell from "../components/layout/AppShell";
 
 import TaskList from "../components/tasks/TaskList";
 import CreateTaskModal from "../components/tasks/CreateTaskModal";
 
+import Button from "../components/ui/Button";
+import StatCard from "../components/ui/StatCard";
+import { EmptyState, TaskSkeleton } from "../components/ui/Feedback";
+
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+
+// Presentation helper
+const getGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+};
 
 function Dashboard() {
   const { user } = useAuth();
@@ -144,327 +158,265 @@ function Dashboard() {
   };
 
   // --------------------------------------------------
+  // DISPLAY HELPERS (presentation only)
+  // --------------------------------------------------
+
+  const statsUnavailable = loadingStats || statsError;
+
+  const display = (value) => (statsUnavailable ? "—" : value);
+
+  const percent = (value) =>
+    !statsUnavailable && stats.total > 0
+      ? Math.min(100, (value / stats.total) * 100)
+      : 0;
+
+  const completionRate =
+    !statsUnavailable && stats.total > 0
+      ? Math.round((stats.completed / stats.total) * 100)
+      : 0;
+
+  const firstName = (user?.name || "").trim().split(" ")[0];
+
+  // --------------------------------------------------
   // UI
   // --------------------------------------------------
 
   return (
-    <div className="flex min-h-screen bg-[#11100E] text-[#F5F5F4]">
+    <AppShell>
 
-      {/* Sidebar */}
-      <Sidebar />
+      {/* --------------------------------------------------
+          PAGE HEADER
+      -------------------------------------------------- */}
 
-      {/* Main Area */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.025em] sm:text-[32px]">
+            {getGreeting()}, {firstName || "there"}
+          </h1>
 
-        {/* Topbar */}
-        <Topbar
-          onNewTask={() =>
-            setIsCreateTaskOpen(true)
-          }
+          <p className="mt-1.5 text-sm text-[#A1A7B3]">
+            Here's what's happening with your tasks.
+          </p>
+        </div>
+
+        <Button
+          icon={Plus}
+          onClick={() => setIsCreateTaskOpen(true)}
+          className="w-full sm:w-auto"
+        >
+          New Task
+        </Button>
+      </div>
+
+      {/* --------------------------------------------------
+          STATISTICS
+      -------------------------------------------------- */}
+
+      <section
+        aria-label="Task statistics"
+        className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <StatCard
+          label="Total Tasks"
+          value={display(stats.total)}
+          icon={ListTodo}
+          tone="neutral"
+          hint="In your workspace"
         />
 
-        <main className="flex-1 overflow-auto p-6">
+        <StatCard
+          label="Completed"
+          value={display(stats.completed)}
+          icon={CheckCircle2}
+          tone="green"
+          hint="Successfully finished"
+        />
 
-          {/* --------------------------------------------------
-              WELCOME HEADER
-          -------------------------------------------------- */}
+        <StatCard
+          label="In Progress"
+          value={display(stats.inProgress)}
+          icon={CircleDot}
+          tone="purple"
+          hint="Currently being worked on"
+        />
 
-          <div className="mb-8">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#F59E0B]">
-              Overview
-            </p>
+        <StatCard
+          label="Overdue"
+          value={display(stats.overdue)}
+          icon={AlertCircle}
+          tone="red"
+          hint="Need your attention"
+        />
+      </section>
 
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#F5F5F4]">
-              Good to see you,{" "}
-              {user?.name || "there"}.
-            </h1>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
-            <p className="mt-1 text-sm text-[#78716C]">
-              Here's a quick overview of your work.
-            </p>
+        {/* --------------------------------------------------
+            RECENT TASKS
+        -------------------------------------------------- */}
+
+        <section className="min-w-0 lg:col-span-2">
+
+          {/* Section Header */}
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold tracking-[-0.01em]">
+                Recent Tasks
+              </h2>
+            </div>
+
+            <Link
+              to="/tasks"
+              className="group flex items-center gap-1.5 rounded text-sm font-medium text-[#A78BFA] transition-colors duration-150 hover:text-[#C4B5FD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50"
+            >
+              View all tasks
+
+              <ArrowRight
+                size={15}
+                aria-hidden="true"
+                className="transition-transform duration-150 group-hover:translate-x-0.5"
+              />
+            </Link>
           </div>
 
-          {/* --------------------------------------------------
-              STATS
-          -------------------------------------------------- */}
+          {/* Loading */}
+          {loadingTasks && <TaskSkeleton rows={5} />}
 
-          <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {/* Error */}
+          {!loadingTasks && taskError && (
+            <div
+              role="alert"
+              className="flex min-h-48 items-center justify-center rounded-xl border border-[#EF4444]/25 bg-[#EF4444]/[0.05] px-4"
+            >
+              <div className="text-center">
+                <p className="text-sm font-medium text-[#F87171]">
+                  Unable to load recent tasks
+                </p>
 
-            {/* Total Tasks */}
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-5 transition-colors hover:border-[#454039]">
-              <div className="flex items-start justify-between">
-
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#211F1C] text-[#F59E0B]">
-                    <ListTodo size={17} />
-                  </div>
-
-                  <p className="text-sm text-[#A8A29E]">
-                    Total Tasks
-                  </p>
-                </div>
-
-                <span className="text-xs text-[#78716C]">
-                  All
-                </span>
-
-              </div>
-
-              <p className="mt-4 text-3xl font-semibold tracking-tight">
-                {loadingStats || statsError
-                  ? "—"
-                  : stats.total}
-              </p>
-
-              <p className="mt-1 text-xs text-[#57534E]">
-                Tasks in your workspace
-              </p>
-            </div>
-
-            {/* Completed */}
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-5 transition-colors hover:border-[#454039]">
-              <div className="flex items-start justify-between">
-
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#211F1C] text-green-500">
-                    <CheckCircle2 size={17} />
-                  </div>
-
-                  <p className="text-sm text-[#A8A29E]">
-                    Completed
-                  </p>
-                </div>
-
-                <span className="text-xs text-green-500">
-                  Done
-                </span>
-
-              </div>
-
-              <p className="mt-4 text-3xl font-semibold tracking-tight">
-                {loadingStats || statsError
-                  ? "—"
-                  : stats.completed}
-              </p>
-
-              <p className="mt-1 text-xs text-[#57534E]">
-                Successfully completed
-              </p>
-            </div>
-
-            {/* Overdue */}
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-5 transition-colors hover:border-[#454039]">
-              <div className="flex items-start justify-between">
-
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#211F1C] text-red-400">
-                    <AlertCircle size={17} />
-                  </div>
-
-                  <p className="text-sm text-[#A8A29E]">
-                    Overdue
-                  </p>
-                </div>
-
-                <span className="text-xs text-red-400">
-                  Attention
-                </span>
-
-              </div>
-
-              <p className="mt-4 text-3xl font-semibold tracking-tight">
-                {loadingStats || statsError
-                  ? "—"
-                  : stats.overdue}
-              </p>
-
-              <p className="mt-1 text-xs text-[#57534E]">
-                Require your attention
-              </p>
-            </div>
-
-          </section>
-
-          {/* --------------------------------------------------
-              WORK SUMMARY
-          -------------------------------------------------- */}
-
-          <section className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-            {/* Pending */}
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-5">
-              <div className="flex items-center justify-between">
-
-                <div className="flex items-center gap-3">
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#211F1C] text-[#F59E0B]">
-                    <Clock3 size={18} />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-[#F5F5F4]">
-                      Pending Tasks
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-[#78716C]">
-                      Tasks waiting to be started
-                    </p>
-                  </div>
-
-                </div>
-
-                <span className="text-xl font-semibold text-[#F5F5F4]">
-                  {loadingStats || statsError
-                    ? "—"
-                    : stats.pending}
-                </span>
-
-              </div>
-            </div>
-
-            {/* In Progress */}
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-5">
-              <div className="flex items-center justify-between">
-
-                <div className="flex items-center gap-3">
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#211F1C] text-[#F59E0B]">
-                    <Clock3 size={18} />
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-[#F5F5F4]">
-                      In Progress
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-[#78716C]">
-                      Tasks currently being worked on
-                    </p>
-                  </div>
-
-                </div>
-
-                <span className="text-xl font-semibold text-[#F5F5F4]">
-                  {loadingStats || statsError
-                    ? "—"
-                    : stats.inProgress}
-                </span>
-
-              </div>
-            </div>
-
-          </section>
-
-          {/* --------------------------------------------------
-              RECENT TASKS
-          -------------------------------------------------- */}
-
-          <section>
-
-            {/* Section Header */}
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
-              <div>
-                <h2 className="text-lg font-semibold">
-                  Recent Tasks
-                </h2>
-
-                <p className="mt-1 text-sm text-[#78716C]">
-                  Your latest tasks at a glance.
+                <p className="mt-1 text-xs text-[#F87171]/70">
+                  {taskError}
                 </p>
               </div>
-
-              <a
-                href="/tasks"
-                className="group flex items-center gap-1.5 text-sm font-medium text-[#F59E0B] transition-colors hover:text-[#D97706]"
-              >
-                View all tasks
-
-                <ArrowRight
-                  size={15}
-                  className="transition-transform group-hover:translate-x-0.5"
-                />
-              </a>
-
             </div>
+          )}
 
-            {/* Loading */}
-            {loadingTasks && (
-              <div className="flex min-h-48 items-center justify-center rounded-lg border border-[#302D29] bg-[#191816]">
-                <div className="text-center">
-
-                  <div className="mx-auto mb-3 h-6 w-6 animate-spin rounded-full border-2 border-[#302D29] border-t-[#F59E0B]" />
-
-                  <p className="text-sm text-[#A8A29E]">
-                    Loading recent tasks...
-                  </p>
-
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {!loadingTasks && taskError && (
-              <div className="flex min-h-48 items-center justify-center rounded-lg border border-red-900/50 bg-red-950/20">
-                <div className="text-center">
-
-                  <p className="text-sm font-medium text-red-400">
-                    Unable to load recent tasks
-                  </p>
-
-                  <p className="mt-1 text-xs text-red-400/70">
-                    {taskError}
-                  </p>
-
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loadingTasks &&
-              !taskError &&
-              tasks.length === 0 && (
-                <div className="rounded-lg border border-[#302D29] bg-[#191816] px-6 py-12 text-center">
-
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-md bg-[#211F1C] text-[#F59E0B]">
-                    <ListTodo size={19} />
-                  </div>
-
-                  <h3 className="mt-4 text-sm font-medium text-[#F5F5F4]">
-                    No tasks yet
-                  </h3>
-
-                  <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[#78716C]">
-                    Create your first task to start organizing your work.
-                  </p>
-
-                  <button
-                    type="button"
+          {/* Empty State */}
+          {!loadingTasks &&
+            !taskError &&
+            tasks.length === 0 && (
+              <EmptyState
+                icon={ListTodo}
+                title="No tasks yet"
+                description="Create your first task to start organizing your work."
+                action={
+                  <Button
+                    icon={Plus}
                     onClick={() =>
                       setIsCreateTaskOpen(true)
                     }
-                    className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-medium text-[#11100E] transition-colors hover:bg-[#D97706]"
                   >
-                    <Plus size={16} />
                     Create Task
-                  </button>
+                  </Button>
+                }
+              />
+            )}
 
-                </div>
-              )}
+          {/* Recent Task List */}
+          {!loadingTasks &&
+            !taskError &&
+            tasks.length > 0 && (
+              <TaskList
+                tasks={tasks}
+                showActions={false}
+              />
+            )}
+        </section>
 
-            {/* Recent Task List */}
-            {!loadingTasks &&
-              !taskError &&
-              tasks.length > 0 && (
-                <TaskList
-                  tasks={tasks}
-                  showAction={false}
-                />
-              )}
+        {/* --------------------------------------------------
+            SIDE PANEL: PROGRESS + QUICK ACTIONS
+        -------------------------------------------------- */}
 
+        <aside className="min-w-0 space-y-6">
+
+          {/* Progress */}
+          <section className="rounded-xl border border-[#252A33] bg-[#16191F] p-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-sm font-medium">Progress</h2>
+
+              <span className="text-2xl font-semibold tracking-[-0.02em]">
+                {statsUnavailable ? "—" : `${completionRate}%`}
+              </span>
+            </div>
+
+            <div
+              role="progressbar"
+              aria-label="Tasks completed"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={completionRate}
+              className="mt-4 flex h-2 overflow-hidden rounded-full bg-[#111318]"
+            >
+              <div
+                className="h-full bg-[#22C55E] transition-[width] duration-500 ease-out"
+                style={{ width: `${percent(stats.completed)}%` }}
+              />
+              <div
+                className="h-full bg-[#7C3AED] transition-[width] duration-500 ease-out"
+                style={{ width: `${percent(stats.inProgress)}%` }}
+              />
+            </div>
+
+            <dl className="mt-4 space-y-2.5 text-[13px]">
+              <div className="flex items-center justify-between">
+                <dt className="flex items-center gap-2 text-[#A1A7B3]">
+                  <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
+                  Completed
+                </dt>
+                <dd className="font-medium">{display(stats.completed)}</dd>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <dt className="flex items-center gap-2 text-[#A1A7B3]">
+                  <span className="h-2 w-2 rounded-full bg-[#7C3AED]" />
+                  In Progress
+                </dt>
+                <dd className="font-medium">{display(stats.inProgress)}</dd>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <dt className="flex items-center gap-2 text-[#A1A7B3]">
+                  <span className="h-2 w-2 rounded-full bg-[#6B7280]" />
+                  Pending
+                </dt>
+                <dd className="font-medium">{display(stats.pending)}</dd>
+              </div>
+            </dl>
           </section>
 
-        </main>
+          {/* Quick actions */}
+          <section className="rounded-xl border border-[#252A33] bg-[#16191F] p-5">
+            <h2 className="text-sm font-medium">Quick actions</h2>
+
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                icon={Plus}
+                onClick={() => setIsCreateTaskOpen(true)}
+                className="justify-start"
+              >
+                Create Task
+              </Button>
+
+              <Link
+                to="/tasks"
+                className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#252A33] bg-[#16191F] px-4 text-sm font-medium text-[#F5F7FA] transition-colors duration-150 ease-out hover:border-[#323845] hover:bg-[#1B1F27] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7C3AED]/50 sm:h-10"
+              >
+                <ListChecks size={16} aria-hidden="true" />
+                View All Tasks
+              </Link>
+            </div>
+          </section>
+        </aside>
       </div>
 
       {/* --------------------------------------------------
@@ -479,7 +431,7 @@ function Dashboard() {
         onTaskCreated={handleTaskCreated}
       />
 
-    </div>
+    </AppShell>
   );
 }
 

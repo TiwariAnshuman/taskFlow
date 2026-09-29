@@ -1,118 +1,201 @@
 import {
   CheckCircle2,
   Circle,
-  Clock3,
+  CircleDot,
+  ListTodo,
   Pencil,
   Trash2,
 } from "lucide-react";
+
+import { StatusBadge, PriorityBadge } from "../ui/Badge";
+import { EmptyState } from "../ui/Feedback";
+import { IconButton } from "../ui/Button";
+
+// ---------------------------------------------------------
+// Display helpers (presentation only)
+// ---------------------------------------------------------
+
+const parseDueDate = (value) => {
+  if (!value) return null;
+
+  const [year, month, day] = String(value).split("T")[0].split("-").map(Number);
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+};
+
+const formatDueDate = (date) => {
+  if (!date) return "No due date";
+
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+};
+
+const isOverdue = (date, status) => {
+  if (!date || status === "completed") return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return date < today;
+};
+
+function StatusIndicator({ status }) {
+  if (status === "completed") {
+    return (
+      <CheckCircle2
+        size={18}
+        aria-hidden="true"
+        className="text-[#22C55E]"
+      />
+    );
+  }
+
+  if (status === "in-progress") {
+    return (
+      <CircleDot
+        size={18}
+        aria-hidden="true"
+        className="text-[#A78BFA]"
+      />
+    );
+  }
+
+  return (
+    <Circle
+      size={18}
+      aria-hidden="true"
+      className="text-[#6B7280]"
+    />
+  );
+}
+
+function DueDate({ task, className = "" }) {
+  const date = parseDueDate(task.dueDate);
+  const overdue = isOverdue(date, task.status);
+
+  return (
+    <span
+      className={`whitespace-nowrap text-xs ${
+        overdue ? "text-[#F87171]" : "text-[#A1A7B3]"
+      } ${className}`}
+    >
+      {overdue ? "Overdue · " : ""}
+      {formatDueDate(date)}
+    </span>
+  );
+}
 
 function TaskList({
   tasks,
   onEditTask,
   onDeleteTask,
   showActions = true,
+  filtered = false,
 }) {
   if (!tasks || tasks.length === 0) {
     return (
-      <div className="flex min-h-56 items-center justify-center rounded-lg border border-dashed border-[#302D29] bg-[#191816]">
-        <div className="text-center">
-          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-[#302D29]">
-            <Circle size={18} className="text-[#F59E0B]" />
-          </div>
-
-          <h4 className="font-medium text-[#F5F5F4]">
-            No tasks yet
-          </h4>
-
-          <p className="mt-1 text-sm text-[#A8A29E]">
-            Create your first task to get started.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={ListTodo}
+        title={filtered ? "No matching tasks" : "No tasks yet"}
+        description={
+          filtered
+            ? "Try adjusting your search or clearing your filters."
+            : "Create your first task to get started."
+        }
+        className="min-h-56"
+      />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#302D29]">
-      {tasks.map((task) => (
-        <div
-          key={task._id}
-          className="relative flex items-center gap-4 border-b border-[#302D29] bg-[#191816] px-5 py-4 last:border-b-0"
-        >
-          {/* Amber task indicator */}
-          <div className="absolute bottom-0 left-0 top-0 w-1 bg-[#F59E0B]" />
+    <ul className="divide-y divide-[#252A33] overflow-hidden rounded-xl border border-[#252A33] bg-[#16191F]">
+      {tasks.map((task) => {
+        const completed = task.status === "completed";
 
-          {/* Status icon */}
-          <div className="shrink-0">
-            {task.status === "completed" ? (
-              <CheckCircle2
-                size={19}
-                className="text-green-500"
-              />
-            ) : (
-              <Clock3
-                size={19}
-                className="text-[#A8A29E]"
-              />
-            )}
-          </div>
+        return (
+          <li
+            key={task._id}
+            className="group flex items-start gap-3 px-4 py-3.5 transition-colors duration-150 ease-out hover:bg-[#1B1F27]/70 sm:px-5"
+          >
+            {/* Status indicator */}
+            <div className="mt-0.5 shrink-0">
+              <StatusIndicator status={task.status} />
+            </div>
 
-          {/* Task information */}
-          <div className="min-w-0 flex-1">
-            <h4
-              className={`text-sm font-medium ${
-                task.status === "completed"
-                  ? "text-[#78716C] line-through"
-                  : "text-[#F5F5F4]"
+            {/* Task information */}
+            <div className="min-w-0 flex-1">
+              <h4
+                className={`truncate text-sm font-medium ${
+                  completed
+                    ? "text-[#6B7280] line-through"
+                    : "text-[#F5F7FA]"
+                }`}
+              >
+                {task.title}
+              </h4>
+
+              {task.description && (
+                <p
+                  className={`mt-0.5 truncate text-[13px] ${
+                    completed ? "text-[#6B7280]/80" : "text-[#A1A7B3]"
+                  }`}
+                >
+                  {task.description}
+                </p>
+              )}
+
+              {/* Mobile metadata */}
+              <div
+                className={`mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 md:hidden ${
+                  completed ? "opacity-70" : ""
+                }`}
+              >
+                <StatusBadge status={task.status} />
+                <PriorityBadge priority={task.priority} />
+                <DueDate task={task} />
+              </div>
+            </div>
+
+            {/* Desktop metadata */}
+            <div
+              className={`hidden shrink-0 items-center gap-3 md:flex ${
+                completed ? "opacity-70" : ""
               }`}
             >
-              {task.title}
-            </h4>
+              <PriorityBadge priority={task.priority} />
+              <StatusBadge status={task.status} />
+              <DueDate task={task} className="w-24 text-right" />
+            </div>
 
-            {task.description && (
-              <p className="mt-1 truncate text-xs text-[#78716C]">
-                {task.description}
-              </p>
+            {/* Actions */}
+            {showActions && (
+              <div className="-mr-1.5 flex shrink-0 items-center gap-0.5">
+                <IconButton
+                  icon={Pencil}
+                  label={`Edit ${task.title}`}
+                  onClick={() => onEditTask?.(task)}
+                  className="hover:text-[#A78BFA]"
+                />
+
+                <IconButton
+                  icon={Trash2}
+                  label={`Delete ${task.title}`}
+                  onClick={() => onDeleteTask?.(task)}
+                  className="hover:bg-[#EF4444]/10 hover:text-[#F87171]"
+                />
+              </div>
             )}
-          </div>
-
-          {/* Status */}
-          <span className="hidden shrink-0 rounded-md border border-[#302D29] bg-[#211F1C] px-2.5 py-1 text-xs text-[#A8A29E] sm:inline-flex">
-            {task.status}
-          </span>
-
-          {/* Priority */}
-          <span className="hidden shrink-0 text-xs text-[#A8A29E] md:inline-flex">
-            {task.priority}
-          </span>
-
-          {/* Actions */}
-          {showActions && (
-            <>
-              {/* Edit */}
-              <button
-                type="button"
-                onClick={() => onEditTask?.(task)}
-                className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-[#F59E0B]"
-                aria-label={`Edit ${task.title}`}
-              >
-                <Pencil size={17} />
-              </button>
-
-              {/* Delete */}
-              <button
-                type="button"
-                onClick={() => onDeleteTask?.(task)}
-                className="shrink-0 rounded-lg p-2 text-[#78716C] transition-colors hover:bg-[#211F1C] hover:text-red-400"
-                aria-label={`Delete ${task.title}`}
-              >
-                <Trash2 size={17} />
-              </button>
-            </>
-          )}
-        </div>
-      ))}
-    </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

@@ -1,43 +1,54 @@
+import { Bell, Menu } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import Avatar from "../ui/Avatar";
+import { IconButton } from "../ui/Button";
 
-import { Bell, Plus } from "lucide-react";
+const pageTitles = {
+  "/dashboard": "Dashboard",
+  "/tasks": "Tasks",
+  "/settings": "Settings",
+};
 
-function Topbar({ onNewTask }) {
+function Topbar({ onMenuClick }) {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+
+  const title = pageTitles[pathname] || "Workspace";
+
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#302D29] bg-[#11100E] px-6">
-
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-[#252A33] bg-[#0B0D10]/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
       {/* Left */}
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[#A8A29E]">
-          Workspace
-        </p>
+      <div className="flex min-w-0 items-center gap-2">
+        <IconButton
+          icon={Menu}
+          label="Open navigation"
+          onClick={onMenuClick}
+          aria-controls="mobile-navigation"
+          className="-ml-2 lg:hidden"
+          iconSize={19}
+        />
 
-        <h1 className="text-lg font-semibold text-[#F5F5F4]">
-          My Tasks
-        </h1>
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <span className="hidden text-[#6B7280] sm:inline">Workspace</span>
+          <span aria-hidden="true" className="hidden text-[#323845] sm:inline">
+            /
+          </span>
+          <span className="truncate font-medium text-[#F5F7FA]">{title}</span>
+        </div>
       </div>
 
       {/* Right */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <IconButton icon={Bell} label="Notifications" />
 
-        {/* Notifications */}
-        <button
-          type="button"
-          className="rounded-lg p-2 text-[#A8A29E] transition-colors hover:bg-[#211F1C] hover:text-[#F5F5F4]"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
+        <div className="ml-1 flex items-center gap-2.5 border-l border-[#252A33] pl-3 sm:pl-4">
+          <Avatar name={user?.name} />
 
-        {/* New Task */}
-        <button
-          type="button"
-          onClick={onNewTask}
-          className="flex items-center gap-2 rounded-lg bg-[#F59E0B] px-4 py-2 text-sm font-medium text-[#11100E] transition-colors hover:bg-[#D97706]"
-        >
-          <Plus size={17} />
-          New Task
-        </button>
-
+          <span className="hidden max-w-[10rem] truncate text-sm text-[#F5F7FA] sm:block">
+            {user?.name || "Account"}
+          </span>
+        </div>
       </div>
     </header>
   );

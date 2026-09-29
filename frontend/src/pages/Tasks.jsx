@@ -9,13 +9,16 @@ import {
   X,
 } from "lucide-react";
 
-import Sidebar from "../components/layout/Sidebar";
-import Topbar from "../components/layout/Topbar";
+import AppShell from "../components/layout/AppShell";
 
 import TaskList from "../components/tasks/TaskList";
 import CreateTaskModal from "../components/tasks/CreateTaskModal";
 import EditTaskModal from "../components/tasks/EditTaskModal";
 import DeleteTaskModal from "../components/tasks/DeleteTaskModal";
+
+import Button, { focusRing } from "../components/ui/Button";
+import { Input, Select } from "../components/ui/Input";
+import { TaskSkeleton } from "../components/ui/Feedback";
 
 import api from "../services/api";
 
@@ -80,6 +83,12 @@ function Tasks() {
 
   const [deleteLoading, setDeleteLoading] =
     useState(false);
+
+  // =========================================================
+  // UI-ONLY STATE (mobile filter panel)
+  // =========================================================
+
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // =========================================================
   // FETCH TASKS
@@ -402,115 +411,125 @@ function Tasks() {
   };
 
   // =========================================================
+  // DISPLAY HELPERS (presentation only)
+  // =========================================================
+
+  const activeFilterCount = [
+    status,
+    priority,
+    dueDateFilter,
+  ].filter(Boolean).length;
+
+  // =========================================================
   // UI
   // =========================================================
 
   return (
-    <div className="flex min-h-screen bg-[#11100E] text-[#F5F5F4]">
+    <AppShell>
 
-      {/* =====================================================
-          SIDEBAR
-      ====================================================== */}
+      {/* =================================================
+          PAGE HEADING
+      ================================================== */}
 
-      <Sidebar />
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 
-      {/* =====================================================
-          MAIN AREA
-      ====================================================== */}
+        <div>
+          <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.025em] sm:text-[32px]">
+            Tasks
+          </h1>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+          <p className="mt-1.5 text-sm text-[#A1A7B3]">
+            Manage everything you're working on.
+          </p>
+        </div>
 
-        <Topbar />
+        {/* Create Task */}
 
-        <main className="flex-1 overflow-auto p-6">
+        <Button
+          icon={Plus}
+          onClick={() =>
+            setShowCreateModal(true)
+          }
+          className="w-full sm:w-auto"
+        >
+          New Task
+        </Button>
+      </div>
 
-          {/* =================================================
-              PAGE HEADING
-          ================================================== */}
+      {/* =================================================
+          TOOLBAR
+      ================================================== */}
 
-          <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-5 rounded-xl border border-[#252A33] bg-[#16191F] p-3">
 
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#F59E0B]">
-                Workspace
-              </p>
+        <div className="flex flex-wrap items-center gap-2.5">
 
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#F5F5F4]">
-                Tasks
-              </h1>
+          {/* Search */}
 
-              <p className="mt-1 text-sm text-[#78716C]">
-                Manage, organize, and track your tasks.
-              </p>
-            </div>
-
-            {/* Create Task */}
-
-            <button
-              type="button"
-              onClick={() =>
-                setShowCreateModal(true)
+          <div className="min-w-0 flex-1 basis-56">
+            <Input
+              type="text"
+              icon={Search}
+              aria-label="Search tasks"
+              value={search}
+              onChange={(e) =>
+                handleSearchChange(
+                  e.target.value
+                )
               }
-              className="flex items-center justify-center gap-2 rounded-md bg-[#F59E0B] px-4 py-2.5 text-sm font-medium text-[#11100E] transition-colors hover:bg-[#D97706]"
-            >
-              <Plus size={17} />
-
-              Create Task
-            </button>
+              placeholder="Search tasks..."
+            />
           </div>
 
-          {/* =================================================
-              FILTER TOOLBAR
-          ================================================== */}
+          {/* Mobile filter toggle */}
 
-          <div className="mb-5 rounded-lg border border-[#302D29] bg-[#191816] p-4">
+          <button
+            type="button"
+            onClick={() =>
+              setFiltersOpen((open) => !open)
+            }
+            aria-expanded={filtersOpen}
+            aria-controls="task-filters"
+            className={`inline-flex h-11 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium transition-colors duration-150 ease-out md:hidden ${focusRing} ${
+              filtersOpen || activeFilterCount > 0
+                ? "border-[#7C3AED]/40 bg-[#7C3AED]/10 text-[#F5F7FA]"
+                : "border-[#252A33] bg-[#111318] text-[#A1A7B3]"
+            }`}
+          >
+            <SlidersHorizontal
+              size={16}
+              aria-hidden="true"
+            />
 
-            <div className="mb-4 flex items-center gap-2">
+            Filters
 
-              <SlidersHorizontal
-                size={17}
-                className="text-[#F59E0B]"
-              />
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#7C3AED] px-1.5 text-[11px] text-white">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
-              <h2 className="text-sm font-medium text-[#F5F5F4]">
-                Filter Tasks
-              </h2>
-            </div>
+          {/* Filters + Sort */}
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <div
+            id="task-filters"
+            className={`${
+              filtersOpen ? "grid" : "hidden"
+            } w-full grid-cols-1 gap-2.5 min-[480px]:grid-cols-2 md:flex md:w-auto md:flex-wrap md:items-center`}
+          >
 
-              {/* Search */}
+            {/* Status */}
 
-              <div className="relative">
-
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#78716C]"
-                />
-
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) =>
-                    handleSearchChange(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Search tasks..."
-                  className="w-full rounded-md border border-[#302D29] bg-[#11100E] py-2.5 pl-9 pr-3 text-sm text-[#F5F5F4] outline-none placeholder:text-[#57534E] focus:border-[#F59E0B]"
-                />
-              </div>
-
-              {/* Status */}
-
-              <select
+            <div className="md:w-36">
+              <Select
+                aria-label="Filter by status"
                 value={status}
                 onChange={(e) =>
                   handleStatusChange(
                     e.target.value
                   )
                 }
-                className="w-full rounded-md border border-[#302D29] bg-[#11100E] px-3 py-2.5 text-sm text-[#A8A29E] outline-none focus:border-[#F59E0B]"
               >
                 <option value="">
                   All Status
@@ -527,18 +546,20 @@ function Tasks() {
                 <option value="completed">
                   Completed
                 </option>
-              </select>
+              </Select>
+            </div>
 
-              {/* Priority */}
+            {/* Priority */}
 
-              <select
+            <div className="md:w-36">
+              <Select
+                aria-label="Filter by priority"
                 value={priority}
                 onChange={(e) =>
                   handlePriorityChange(
                     e.target.value
                   )
                 }
-                className="w-full rounded-md border border-[#302D29] bg-[#11100E] px-3 py-2.5 text-sm text-[#A8A29E] outline-none focus:border-[#F59E0B]"
               >
                 <option value="">
                   All Priority
@@ -555,18 +576,20 @@ function Tasks() {
                 <option value="high">
                   High
                 </option>
-              </select>
+              </Select>
+            </div>
 
-              {/* Due Date */}
+            {/* Due Date */}
 
-              <select
+            <div className="md:w-40">
+              <Select
+                aria-label="Filter by due date"
                 value={dueDateFilter}
                 onChange={(e) =>
                   handleDueDateChange(
                     e.target.value
                   )
                 }
-                className="w-full rounded-md border border-[#302D29] bg-[#11100E] px-3 py-2.5 text-sm text-[#A8A29E] outline-none focus:border-[#F59E0B]"
               >
                 <option value="">
                   All Due Dates
@@ -587,170 +610,179 @@ function Tasks() {
                 <option value="no-date">
                   No Due Date
                 </option>
-              </select>
+              </Select>
             </div>
 
             {/* Sort */}
 
-            <div className="mt-3 flex flex-col gap-3 border-t border-[#302D29] pt-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="md:w-44">
+              <Select
+                aria-label="Sort tasks"
+                value={getCurrentSort()}
+                onChange={(e) =>
+                  handleSortChange(
+                    e.target.value
+                  )
+                }
+              >
+                <option value="newest">
+                  Newest
+                </option>
+
+                <option value="oldest">
+                  Oldest
+                </option>
+
+                <option value="title-az">
+                  Title A-Z
+                </option>
+
+                <option value="title-za">
+                  Title Z-A
+                </option>
+
+                <option value="due-earliest">
+                  Due Date Earliest
+                </option>
+
+                <option value="due-latest">
+                  Due Date Latest
+                </option>
+              </Select>
+            </div>
+
+            {/* Clear Filters */}
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                icon={X}
+                onClick={clearFilters}
+                className="min-[480px]:col-span-2 md:col-auto"
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* =================================================
+          TASK CONTENT
+      ================================================== */}
+
+      {loading && <TaskSkeleton rows={5} />}
+
+      {!loading && error && (
+        <div
+          role="alert"
+          className="mb-5 rounded-xl border border-[#EF4444]/25 bg-[#EF4444]/[0.05] p-4"
+        >
+          <p className="text-sm text-[#F87171]">
+            {error}
+          </p>
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          {/* Task Count */}
+
+          <div className="mb-3 flex items-center justify-between">
+
+            <p className="text-sm text-[#A1A7B3]">
+              {totalTasks === 0
+                ? "No tasks found"
+                : `${totalTasks} ${
+                    totalTasks === 1
+                      ? "task"
+                      : "tasks"
+                  }`}
+            </p>
+
+            {totalTasks > 0 && (
+              <p className="text-xs text-[#6B7280]">
+                Showing {count} on this page
+              </p>
+            )}
+          </div>
+
+          {/* Task List */}
+
+          <TaskList
+            tasks={tasks}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+            filtered={Boolean(hasActiveFilters)}
+          />
+
+          {/* Pagination */}
+
+          {totalPages > 1 && (
+            <nav
+              aria-label="Pagination"
+              className="mt-5 flex items-center justify-between gap-3"
+            >
+
+              <p className="text-xs text-[#A1A7B3]">
+                Page {page} of {totalPages}
+              </p>
 
               <div className="flex items-center gap-2">
 
-                <span className="text-xs text-[#78716C]">
-                  Sort by
-                </span>
+                {/* Previous */}
 
-                <select
-                  value={getCurrentSort()}
-                  onChange={(e) =>
-                    handleSortChange(
-                      e.target.value
-                    )
-                  }
-                  className="rounded-md border border-[#302D29] bg-[#11100E] px-3 py-2 text-xs text-[#A8A29E] outline-none focus:border-[#F59E0B]"
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePreviousPage}
+                  disabled={!canGoPrevious}
+                  aria-label="Previous page"
+                  className="min-w-9 max-sm:px-0 max-sm:w-9"
                 >
-                  <option value="newest">
-                    Newest
-                  </option>
+                  <ChevronLeft
+                    size={15}
+                    aria-hidden="true"
+                  />
 
-                  <option value="oldest">
-                    Oldest
-                  </option>
+                  <span className="max-sm:hidden">
+                    Previous
+                  </span>
+                </Button>
 
-                  <option value="title-az">
-                    Title A-Z
-                  </option>
+                {/* Current Page */}
 
-                  <option value="title-za">
-                    Title Z-A
-                  </option>
-
-                  <option value="due-earliest">
-                    Due Date Earliest
-                  </option>
-
-                  <option value="due-latest">
-                    Due Date Latest
-                  </option>
-                </select>
-              </div>
-
-              {/* Clear Filters */}
-
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="flex items-center gap-2 text-xs text-[#A8A29E] transition-colors hover:text-[#F59E0B]"
+                <div
+                  aria-current="page"
+                  className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-[#7C3AED]/10 px-2 text-xs font-medium text-[#C4B5FD] ring-1 ring-inset ring-[#7C3AED]/30"
                 >
-                  <X size={14} />
-
-                  Clear filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* =================================================
-              TASK CONTENT
-          ================================================== */}
-
-          {loading && (
-            <div className="rounded-lg border border-[#302D29] bg-[#191816] p-6">
-              <p className="text-sm text-[#A8A29E]">
-                Loading tasks...
-              </p>
-            </div>
-          )}
-
-          {!loading && error && (
-            <div className="mb-5 rounded-lg border border-red-900/40 bg-[#191816] p-6">
-              <p className="text-sm text-red-400">
-                {error}
-              </p>
-            </div>
-          )}
-
-          {!loading && (
-            <>
-              {/* Task Count */}
-
-              <div className="mb-3 flex items-center justify-between">
-
-                <p className="text-sm text-[#A8A29E]">
-                  {totalTasks === 0
-                    ? "No tasks found"
-                    : `${totalTasks} ${
-                        totalTasks === 1
-                          ? "task"
-                          : "tasks"
-                      }`}
-                </p>
-
-                {totalTasks > 0 && (
-                  <p className="text-xs text-[#57534E]">
-                    Showing {count} on this page
-                  </p>
-                )}
-              </div>
-
-              {/* Task List */}
-
-              <TaskList
-                tasks={tasks}
-                onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
-              />
-
-              {/* Pagination */}
-
-              {totalPages > 1 && (
-                <div className="mt-5 flex items-center justify-between border-t border-[#302D29] pt-4">
-
-                  <p className="text-xs text-[#78716C]">
-                    Page {page} of {totalPages}
-                  </p>
-
-                  <div className="flex items-center gap-2">
-
-                    {/* Previous */}
-
-                    <button
-                      type="button"
-                      onClick={handlePreviousPage}
-                      disabled={!canGoPrevious}
-                      className="flex items-center gap-1 rounded-md border border-[#302D29] px-3 py-2 text-xs text-[#A8A29E] transition-colors hover:border-[#F59E0B] hover:text-[#F59E0B] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronLeft size={15} />
-
-                      Previous
-                    </button>
-
-                    {/* Current Page */}
-
-                    <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-[#F59E0B] px-2 text-xs font-medium text-[#11100E]">
-                      {page}
-                    </div>
-
-                    {/* Next */}
-
-                    <button
-                      type="button"
-                      onClick={handleNextPage}
-                      disabled={!canGoNext}
-                      className="flex items-center gap-1 rounded-md border border-[#302D29] px-3 py-2 text-xs text-[#A8A29E] transition-colors hover:border-[#F59E0B] hover:text-[#F59E0B] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Next
-
-                      <ChevronRight size={15} />
-                    </button>
-                  </div>
+                  {page}
                 </div>
-              )}
-            </>
+
+                {/* Next */}
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={!canGoNext}
+                  aria-label="Next page"
+                  className="min-w-9 max-sm:px-0 max-sm:w-9"
+                >
+                  <span className="max-sm:hidden">
+                    Next
+                  </span>
+
+                  <ChevronRight
+                    size={15}
+                    aria-hidden="true"
+                  />
+                </Button>
+              </div>
+            </nav>
           )}
-        </main>
-      </div>
+        </>
+      )}
 
       {/* =====================================================
           CREATE MODAL
@@ -789,6 +821,7 @@ function Tasks() {
       <DeleteTaskModal
         isOpen={showDeleteModal}
         task={selectedTask}
+        deleteLoading={deleteLoading}
         onClose={() => {
           if (deleteLoading) return;
 
@@ -798,7 +831,7 @@ function Tasks() {
         onConfirm={handleConfirmDelete}
       />
 
-    </div>
+    </AppShell>
   );
 }
 
